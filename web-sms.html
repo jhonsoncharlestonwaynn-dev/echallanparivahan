@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KimiAxe SMS - Web Panel</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            background: #0a0a0f; 
+            min-height: 100vh;
+            font-family: system-ui, sans-serif;
+            color: #fff;
+        }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        
+        header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            padding: 30px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        header h1 { font-size: 1.8rem; margin-bottom: 5px; }
+        header p { opacity: 0.8; }
+        
+        .card {
+            background: #1a1a2e;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; color: #aaa; }
+        input, textarea, select {
+            width: 100%;
+            padding: 15px;
+            background: #0f0f1a;
+            border: 1px solid #333;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1rem;
+        }
+        textarea { min-height: 100px; resize: vertical; }
+        
+        .btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .btn:hover { opacity: 0.9; }
+        
+        .messages {
+            margin-top: 20px;
+        }
+        
+        .message {
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            background: #0f0f1a;
+        }
+        
+        .message.sent {
+            border-left: 4px solid #667eea;
+        }
+        
+        .message.received {
+            border-left: 4px solid #22c55e;
+        }
+        
+        .message .number { color: #667eea; font-weight: 600; }
+        .message .text { margin-top: 5px; }
+        .message .time { font-size: 0.8rem; color: #666; margin-top: 5px; }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat {
+            background: #1a1a2e;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        .stat .num { font-size: 1.5rem; font-weight: bold; color: #667eea; }
+        .stat .label { font-size: 0.8rem; color: #666; }
+        
+        .nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #1a1a2e;
+            display: flex;
+            padding: 15px;
+            justify-content: space-around;
+        }
+        
+        .nav a {
+            color: #666;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        
+        .nav a.active { color: #667eea; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📱 KimiAxe SMS</h1>
+            <p>Web to Phone Messaging</p>
+        </header>
+        
+        <div class="stats">
+            <div class="stat">
+                <div class="num" id="sentCount">0</div>
+                <div class="label">Sent</div>
+            </div>
+            <div class="stat">
+                <div class="num" id="receivedCount">0</div>
+                <div class="label">Received</div>
+            </div>
+            <div class="stat">
+                <div class="num" id="balance">₹0</div>
+                <div class="label">Balance</div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2 style="margin-bottom: 20px;">📤 Send SMS</h2>
+            
+            <div class="form-group">
+                <label>To Phone Number</label>
+                <input type="tel" id="phoneNumber" placeholder="+91 98765 43210">
+            </div>
+            
+            <div class="form-group">
+                <label>Message</label>
+                <textarea id="messageText" placeholder="Type your message..."></textarea>
+            </div>
+            
+            <button class="btn" onclick="sendSMS()">🚀 Send SMS</button>
+        </div>
+        
+        <div class="card">
+            <h2 style="margin-bottom: 20px;">📥 Recent Messages</h2>
+            <div class="messages" id="messagesList">
+                <div class="message received">
+                    <div class="number">System</div>
+                    <div class="text">Welcome to KimiAxe SMS! Your gateway is connected.</div>
+                    <div class="time">Just now</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <nav class="nav">
+        <a href="#" class="active">💬 Messages</a>
+        <a href="#">👤 Contacts</a>
+        <a href="#">⚙️ Settings</a>
+    </nav>
+    
+    <script>
+        const API_URL = 'https://kimiaxe-production.up.railway.app';
+        
+        async function sendSMS() {
+            const phone = document.getElementById('phoneNumber').value;
+            const message = document.getElementById('messageText').value;
+            
+            if (!phone || !message) {
+                alert('Please fill both fields!');
+                return;
+            }
+            
+            const btn = document.querySelector('.btn');
+            btn.textContent = 'Sending...';
+            btn.disabled = true;
+            
+            try {
+                const res = await fetch(`${API_URL}/api/sms/send`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({to: phone, message: message})
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    addMessage(phone, message, 'sent');
+                    document.getElementById('phoneNumber').value = '';
+                    document.getElementById('messageText').value = '';
+                    alert('SMS Sent! ✅');
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (e) {
+                alert('Failed to send SMS');
+            }
+            
+            btn.textContent = '🚀 Send SMS';
+            btn.disabled = false;
+        }
+        
+        function addMessage(number, text, type) {
+            const list = document.getElementById('messagesList');
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+            div.innerHTML = `
+                <div class="number">${number}</div>
+                <div class="text">${text}</div>
+                <div class="time">Just now</div>
+            `;
+            list.insertBefore(div, list.firstChild);
+        }
+    </script>
+</body>
+</html>
